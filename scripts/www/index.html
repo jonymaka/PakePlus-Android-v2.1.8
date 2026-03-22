@@ -1,11 +1,2036 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ProProgress - 智能任务提醒</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #c4622d;
+            --primary-light: #f5ebe0;
+            --primary-dark: #8b4721;
+            --bg: #faf8f5;
+            --bg-warm: #f7f3ee;
+            --card: #ffffff;
+            --card-elevated: #fffffe;
+            --text-main: #2d2a26;
+            --text-sub: #7a756d;
+            --text-muted: #b5afa6;
+            --success: #4a7c59;
+            --danger: #c44536;
+            --warning: #c9822d;
+            --border: #e8e4de;
+            --shadow-sm: 0 1px 3px rgba(45, 42, 38, 0.04);
+            --shadow-md: 0 4px 12px rgba(45, 42, 38, 0.06);
+            --shadow-lg: 0 12px 32px rgba(45, 42, 38, 0.08);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+        }
+
+        .dark-mode {
+            --primary: #e07b4c;
+            --primary-light: #3d2a20;
+            --bg: #1a1816;
+            --bg-warm: #211e1b;
+            --card: #2a2622;
+            --card-elevated: #332f2a;
+            --text-main: #f5f2ed;
+            --text-sub: #a39e95;
+            --text-muted: #6b665e;
+            --border: #3d3832;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding-bottom: 120px;
+            overflow-x: hidden;
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 纸张纹理叠加 */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.025;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .dark-mode body::before {
+            opacity: 0.03;
+        }
+
+        /* 顶部导航 */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 70%, transparent 100%);
+            padding: 16px 20px;
+            padding-top: calc(env(safe-area-inset-top) + 16px);
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .brand {
+            animation: fadeSlideIn 0.6s ease-out;
+        }
+
+        .brand h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+            margin-bottom: 2px;
+        }
+
+        .brand p {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            animation: fadeSlideIn 0.6s ease-out 0.1s backwards;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: none;
+            background: var(--card);
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .icon-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        .dark-mode .icon-btn:hover {
+            background: var(--primary-light);
+        }
+
+        /* 总进度仪表盘 */
+        .dashboard {
+            margin: 8px 20px 24px;
+            padding: 28px 24px;
+            background: var(--card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+            animation: fadeSlideIn 0.6s ease-out 0.2s backwards;
+        }
+
+        .dashboard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle at center, var(--primary-light) 0%, transparent 70%);
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        /* --- MOMO THE CAT STYLES --- */
+        #momo-container {
+            position: absolute;
+            right: 110px;
+            bottom: 20px;
+            width: 80px;
+            height: 60px;
+            z-index: 1;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .cat-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .cat-body { fill: var(--primary-light); stroke: var(--primary); stroke-width: 1.5; transition: var(--transition); }
+        .cat-stripe { fill: var(--primary); opacity: 0.3; }
+        .cat-eye { fill: var(--text-sub); transition: var(--transition); }
+        .cat-tail { 
+            transform-origin: 20% 80%; 
+            animation: tail-wag 3s ease-in-out infinite alternate;
+            fill: none; stroke: var(--primary); stroke-width: 1.5; stroke-linecap: round;
+        }
+        
+        /* Cat Animations */
+        @keyframes tail-wag {
+            0% { transform: rotate(-5deg); }
+            100% { transform: rotate(15deg); }
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(1.05); }
+        }
+
+        .momo-sleeping .cat-body { animation: breathe 3s ease-in-out infinite; }
+        .momo-sleeping .cat-eye { opacity: 0; }
+        .momo-sleeping .cat-eye-closed { display: block !important; stroke: var(--text-sub); fill: none; stroke-width: 1; }
+        
+        .momo-drowse .cat-body { animation: breathe 4s ease-in-out infinite; }
+        .momo-drowse .cat-eye { opacity: 0.5; }
+        .momo-drowse .cat-eye-closed { display: block !important; stroke: var(--text-sub); fill: none; stroke-width: 1; }
+        
+        .momo-active .cat-eye { opacity: 1; transform: scaleY(1); }
+        .momo-active .cat-eye-closed { display: none; }
+
+        .momo-scared { animation: jitter 0.2s ease-in-out 3; }
+        @keyframes jitter {
+            0% { transform: translate(0,0); }
+            25% { transform: translate(2px, -2px); }
+            50% { transform: translate(-2px, 2px); }
+            100% { transform: translate(0,0); }
+        }
+
+        .momo-pop {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+        .momo-pop.show { opacity: 1; top: -35px; }
+
+        /* --- END MOMO STYLES --- */
+
+        .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .dash-label {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+
+        .dash-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            line-height: 1;
+            letter-spacing: -0.03em;
+        }
+
+        .dash-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .dash-ring {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .dash-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .dash-ring-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 6;
+        }
+
+        .dash-ring-fill {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        .dash-ring-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .dash-progress {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .dash-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--warning) 100%);
+            border-radius: 4px;
+            transition: width 1s ease-out;
+            position: relative;
+        }
+
+        .dash-progress-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px var(--card);
+        }
+
+        /* 状态筛选栏 */
+        .filter-section {
+            padding: 0 20px;
+            margin-bottom: 16px;
+            animation: fadeSlideIn 0.6s ease-out 0.3s backwards;
+        }
+
+        .filter-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .filter-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            border: none;
+            background: var(--card);
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-chip:hover {
+            background: var(--primary-light);
+        }
+
+        .filter-chip.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(196, 98, 45, 0.3);
+        }
+
+        .filter-chip .chip-count {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .filter-chip.active .chip-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 任务列表容器 */
+        .list-container {
+            padding: 0 20px;
+        }
+
+        /* 状态分组 */
+        .status-section {
+            margin-bottom: 24px;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .status-header.todo {
+            border-color: var(--warning);
+        }
+
+        .status-header.doing {
+            border-color: var(--primary);
+        }
+
+        .status-header.done {
+            border-color: var(--success);
+        }
+
+        .status-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-header.todo .status-icon {
+            background: #fef3e6;
+            color: var(--warning);
+        }
+
+        .status-header.doing .status-icon {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .status-header.done .status-icon {
+            background: #e8f3eb;
+            color: var(--success);
+        }
+
+        .dark-mode .status-header.todo .status-icon {
+            background: #3d2a1a;
+        }
+
+        .dark-mode .status-header.doing .status-icon {
+            background: var(--primary-light);
+        }
+
+        .dark-mode .status-header.done .status-icon {
+            background: #1a2e20;
+        }
+
+        .status-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .status-count {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* 任务卡片 */
+        .task-node {
+            background: var(--card);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            animation: fadeSlideIn 0.4s ease-out backwards;
+        }
+
+        .task-node:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .task-node.dragging {
+            opacity: 0.6;
+            transform: scale(1.02) rotate(1deg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+        }
+
+        .task-node.drag-over {
+            border: 2px dashed var(--primary);
+            background: var(--primary-light);
+        }
+
+        .task-main {
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .drag-handle {
+            color: var(--text-muted);
+            cursor: grab;
+            opacity: 0.5;
+            transition: all 0.2s ease;
+            padding: 4px;
+            margin: -4px;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+            opacity: 1;
+        }
+
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 1rem;
+            flex: 1;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .task-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-action-btn:hover {
+            background: var(--bg-warm);
+            color: var(--text-sub);
+        }
+
+        .task-action-btn:active {
+            transform: scale(0.9);
+        }
+
+        .task-action-btn.complete:hover {
+            background: #e8f3eb;
+            color: var(--success);
+        }
+
+        .task-action-btn.delete:hover {
+            background: #fce8e6;
+            color: var(--danger);
+        }
+
+        .task-action-btn.edit:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* 标签和徽章 */
+        .task-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge-status {
+            background: #fef3e6;
+            color: var(--warning);
+        }
+
+        .badge-status.doing {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .badge-status.done {
+            background: #e8f3eb;
+            color: var(--success);
+        }
+
+        .badge-priority {
+            font-weight: 600;
+        }
+
+        .badge-priority.high {
+            background: #fce8e6;
+            color: var(--danger);
+        }
+
+        .badge-priority.medium {
+            background: #fef3e6;
+            color: var(--warning);
+        }
+
+        .badge-priority.low {
+            background: #e8f0f6;
+            color: #4a6fa5;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            background: var(--bg-warm);
+            color: var(--text-sub);
+        }
+
+        /* 任务备注 */
+        .task-notes {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            background: var(--bg-warm);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            line-height: 1.5;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* 任务元信息 */
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .task-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 进度条 */
+        .progress-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease-out;
+        }
+
+        .progress-fill.todo {
+            background: var(--border);
+        }
+
+        .progress-fill.doing {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--warning) 100%);
+        }
+
+        .progress-fill.done {
+            background: var(--success);
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            font-weight: 700;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        .progress-text.todo {
+            color: var(--text-muted);
+        }
+
+        .progress-text.doing {
+            color: var(--primary);
+        }
+
+        .progress-text.done {
+            color: var(--success);
+        }
+
+        /* 子任务区域 */
+        .subtasks-box {
+            background: var(--bg-warm);
+            border-top: 1px solid var(--border);
+            max-height: 0;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+            opacity: 0;
+        }
+
+        .subtasks-box.open {
+            max-height: 1000px;
+            opacity: 1;
+        }
+
+        .subtasks-inner {
+            padding: 16px;
+        }
+
+        .sub-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .sub-item:last-child {
+            border: none;
+        }
+
+        .sub-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .sub-check:hover {
+            border-color: var(--primary);
+        }
+
+        .sub-check.done {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .sub-text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .sub-text.done {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* 展开箭头 */
+        .expand-indicator {
+            text-align: center;
+            padding: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .expand-indicator:hover {
+            color: var(--primary);
+        }
+
+        /* 底部Dock */
+        .dock {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+            background: linear-gradient(0deg, var(--bg) 0%, var(--bg) 60%, transparent 100%);
+            z-index: 200;
+        }
+
+        .add-card {
+            background: var(--card);
+            padding: 8px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border: 1px solid var(--border);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        #taskInput {
+            flex: 1;
+            border: none;
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+        }
+
+        #taskInput::placeholder {
+            color: var(--text-muted);
+        }
+
+        .main-fab {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(196, 98, 45, 0.35);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .main-fab:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(196, 98, 45, 0.4);
+        }
+
+        .main-fab:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 10px rgba(196, 98, 45, 0.3);
+        }
+
+        /* 模态框 */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(45, 42, 38, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card);
+            width: 100%;
+            max-width: 500px;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 24px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 0 auto 20px;
+        }
+
+        .modal-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            background: var(--bg-warm);
+            color: var(--text-main);
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: var(--primary);
+            background: var(--card);
+        }
+
+        .form-group textarea {
+            resize: none;
+            min-height: 80px;
+        }
+
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a756d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-cancel {
+            background: var(--bg-warm);
+            color: var(--text-sub);
+        }
+
+        .btn-cancel:hover {
+            background: var(--border);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(196, 98, 45, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: var(--text-main);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeSlideIn 0.6s ease-out;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: var(--bg-warm);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        .empty-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        /* 已完成任务样式 */
+        .completed-task {
+            opacity: 0.7;
+        }
+
+        .completed-task .task-title {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* 动画 */
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* 进度环动画 */
+        .dash-ring-fill {
+            stroke-dasharray: 226;
+            stroke-dashoffset: 226;
+        }
+
+        .dash-ring-fill.animated {
+            animation: ringFill 1.2s ease-out forwards;
+        }
+
+        @keyframes ringFill {
+            to {
+                stroke-dashoffset: var(--ring-offset);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast">信息提示</div>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="brand">
+            <h1>工作进度</h1>
+            <p id="todayDate">加载中...</p>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" id="notiToggle" onclick="toggleBell()">
+                <i data-lucide="bell" size="20"></i>
+            </button>
+            <button class="icon-btn" id="themeToggle" onclick="toggleTheme()">
+                <i data-lucide="moon" size="20" id="themeIcon"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main>
+    <section class="dashboard">
+        <div class="dash-header">
+            <div>
+                <p class="dash-label">今日目标达成</p>
+                <h2 class="dash-value" id="overallPercent">0%</h2>
+                <p class="dash-sub" id="taskCountLabel">0 个活跃任务</p>
+            </div>
+            <div class="dash-ring">
+                <svg viewBox="0 0 80 80" width="80" height="80">
+                    <circle class="dash-ring-bg" cx="40" cy="40" r="36"></circle>
+                    <circle class="dash-ring-fill" id="ringFill" cx="40" cy="40" r="36"></circle>
+                </svg>
+                <div class="dash-ring-text" id="ringText">0%</div>
+            </div>
+        </div>
+        <div class="dash-progress">
+            <div class="dash-progress-fill" id="dashFill" style="width: 0%"></div>
+        </div>
+
+        <!-- MOMO CAT -->
+        <div id="momo-container" class="momo-sleeping" onclick="momoInteract()">
+            <div id="momo-pop" class="momo-pop">Zzz...</div>
+            <svg class="cat-svg" viewBox="0 0 100 80">
+                <!-- Body -->
+                <path class="cat-body" d="M20,60 Q20,30 50,30 Q80,30 80,60 L20,60 Z" />
+                <!-- Stripes -->
+                <path class="cat-stripe" d="M45,30 Q45,35 40,40 M55,30 Q55,35 60,40" />
+                <!-- Tail -->
+                <path class="cat-tail" d="M80,55 Q95,55 95,40" />
+                <!-- Ears -->
+                <path class="cat-body" d="M30,35 L25,20 L40,30 Z M70,35 L75,20 L60,30 Z" />
+                <!-- Eyes Active -->
+                <circle class="cat-eye" cx="40" cy="45" r="2" />
+                <circle class="cat-eye" cx="60" cy="45" r="2" />
+                <!-- Eyes Closed -->
+                <path class="cat-eye-closed" d="M37,45 Q40,48 43,45" style="display:none" />
+                <path class="cat-eye-closed" d="M57,45 Q60,48 63,45" style="display:none" />
+                <!-- Nose -->
+                <circle fill="#f09" cx="50" cy="50" r="1.5" />
+            </svg>
+        </div>
+    </section>
+
+    <section class="filter-section">
+        <div class="filter-scroll" id="statusFilterBar">
+            <button class="filter-chip active" data-status="all" onclick="filterByStatus('all')">
+                全部<span class="chip-count" id="count-all">0</span>
+            </button>
+            <button class="filter-chip" data-status="todo" onclick="filterByStatus('todo')">
+                待办<span class="chip-count" id="count-todo">0</span>
+            </button>
+            <button class="filter-chip" data-status="doing" onclick="filterByStatus('doing')">
+                进行中<span class="chip-count" id="count-doing">0</span>
+            </button>
+            <button class="filter-chip" data-status="done" onclick="filterByStatus('done')">
+                已完成<span class="chip-count" id="count-done">0</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="list-container" id="taskList">
+        <!-- 动态渲染 -->
+    </section>
+</main>
+
+<div class="dock">
+    <div class="add-card">
+        <input type="text" id="taskInput" placeholder="想开始什么新计划？" readonly onclick="openAddModal()">
+        <button class="main-fab" onclick="openAddModal()">
+            <i data-lucide="plus" size="24"></i>
+        </button>
+    </div>
+</div>
+
+<!-- 添加任务模态框 -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <div class="modal-handle"></div>
+        <h3 class="modal-title">新建任务</h3>
+        <div class="form-group">
+            <label>任务名称</label>
+            <input type="text" id="mTaskName" placeholder="例如：完成项目方案">
+        </div>
+        <div class="form-group">
+            <label>优先级</label>
+            <select id="mTaskPriority">
+                <option value="high">高优先级</option>
+                <option value="medium" selected>中优先级</option>
+                <option value="low">低优先级</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>标签（用逗号分隔）</label>
+            <input type="text" id="mTaskTags" placeholder="工作, 学习, 生活">
+        </div>
+        <div class="form-group">
+            <label>内容记录 / 说明</label>
+            <textarea id="mTaskNote" rows="2" placeholder="记录一些关键提醒..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>拆解子任务（用逗号分隔）</label>
+            <textarea id="mSubTasks" rows="3" placeholder="子任务1, 子任务2..."></textarea>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-cancel" onclick="closeAddModal()">取消</button>
+            <button class="btn btn-primary" onclick="handleCreate()">创建任务</button>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑任务模态框 -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-handle"></div>
+        <h3 class="modal-title">编辑任务</h3>
+        <div class="form-group">
+            <label>任务名称</label>
+            <input type="text" id="eTaskName" placeholder="任务名称">
+        </div>
+        <div class="form-group">
+            <label>优先级</label>
+            <select id="eTaskPriority">
+                <option value="high">高优先级</option>
+                <option value="medium">中优先级</option>
+                <option value="low">低优先级</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>标签（用逗号分隔）</label>
+            <input type="text" id="eTaskTags" placeholder="工作, 学习, 生活">
+        </div>
+        <div class="form-group">
+            <label>内容记录 / 说明</label>
+            <textarea id="eTaskNote" rows="2" placeholder="记录一些关键提醒..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>拆解子任务（用逗号分隔）</label>
+            <textarea id="eSubTasks" rows="3" placeholder="子任务1, 子任务2..."></textarea>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-cancel" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-primary" onclick="handleEdit()">保存修改</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let tasks = JSON.parse(localStorage.getItem('pro_tasks_v4')) || [];
+    let editingIndex = -1;
+    let draggedItem = null;
+    let draggedIndex = null;
+    let isDarkMode = localStorage.getItem('pro_theme') === 'dark';
+    let currentStatusFilter = 'all';
+
+    function init() {
+        updateDate();
+        applyTheme();
+        render();
+        updateMomoState(0);
+        lucide.createIcons();
+        setInterval(checkReminders, 60000);
+    }
+
+    function applyTheme() {
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
+        } else {
+            document.body.classList.remove('dark-mode');
+            document.getElementById('themeIcon').setAttribute('data-lucide', 'moon');
+        }
+        lucide.createIcons();
+    }
+
+    function toggleTheme() {
+        isDarkMode = !isDarkMode;
+        localStorage.setItem('pro_theme', isDarkMode ? 'dark' : 'light');
+        applyTheme();
+        vibrate(20);
+    }
+
+    function updateDate() {
+        const now = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('todayDate').innerText = now.toLocaleDateString('zh-CN', options);
+    }
+
+    function getTaskStatus(task) {
+        const progress = calculateProgress(task);
+        if (progress === 100) return 'done';
+        if (progress > 0) return 'doing';
+        return 'todo';
+    }
+
+    function render() {
+        const list = document.getElementById('taskList');
+        
+        updateFilterCounts();
+        
+        let filteredTasks = tasks;
+        
+        if (currentStatusFilter !== 'all') {
+            filteredTasks = filteredTasks.filter(t => getTaskStatus(t) === currentStatusFilter);
+        }
+        
+        if (tasks.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i data-lucide="clipboard-list" size="36"></i>
+                    </div>
+                    <h3 class="empty-title">开始你的第一个计划</h3>
+                    <p class="empty-text">点击下方按钮添加任务，用子任务拆解目标，保持专注</p>
+                </div>
+            `;
+            updateOverall();
+            lucide.createIcons();
+            return;
+        }
+
+        updateStatusFilters();
+
+        if (currentStatusFilter !== 'all') {
+            list.innerHTML = filteredTasks.map((t, i) => renderTaskCard(t, tasks.indexOf(t))).join('');
+        } else {
+            const todoTasks = filteredTasks.filter(t => getTaskStatus(t) === 'todo');
+            const doingTasks = filteredTasks.filter(t => getTaskStatus(t) === 'doing');
+            const doneTasks = filteredTasks.filter(t => getTaskStatus(t) === 'done');
+            
+            let html = '';
+            
+            if (todoTasks.length > 0) {
+                html += `
+                    <div class="status-section">
+                        <div class="status-header todo">
+                            <div class="status-icon"><i data-lucide="circle" size="16"></i></div>
+                            <span class="status-title">待办</span>
+                            <span class="status-count">${todoTasks.length}</span>
+                        </div>
+                        ${todoTasks.map(t => renderTaskCard(t, tasks.indexOf(t))).join('')}
+                    </div>
+                `;
+            }
+            
+            if (doingTasks.length > 0) {
+                html += `
+                    <div class="status-section">
+                        <div class="status-header doing">
+                            <div class="status-icon"><i data-lucide="loader" size="16"></i></div>
+                            <span class="status-title">进行中</span>
+                            <span class="status-count">${doingTasks.length}</span>
+                        </div>
+                        ${doingTasks.map(t => renderTaskCard(t, tasks.indexOf(t))).join('')}
+                    </div>
+                `;
+            }
+            
+            if (doneTasks.length > 0) {
+                html += `
+                    <div class="status-section">
+                        <div class="status-header done">
+                            <div class="status-icon"><i data-lucide="check-circle" size="16"></i></div>
+                            <span class="status-title">已完成</span>
+                            <span class="status-count">${doneTasks.length}</span>
+                        </div>
+                        ${doneTasks.map(t => renderTaskCard(t, tasks.indexOf(t))).join('')}
+                    </div>
+                `;
+            }
+            
+            list.innerHTML = html || `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i data-lucide="clipboard-list" size="36"></i>
+                    </div>
+                    <h3 class="empty-title">没有符合条件的任务</h3>
+                    <p class="empty-text">尝试切换筛选条件或添加新任务</p>
+                </div>
+            `;
+        }
+
+        updateOverall();
+        lucide.createIcons();
+        localStorage.setItem('pro_tasks_v4', JSON.stringify(tasks));
+        
+        initDragAndDrop();
+    }
+
+    function updateFilterCounts() {
+        const all = tasks.length;
+        const todo = tasks.filter(t => getTaskStatus(t) === 'todo').length;
+        const doing = tasks.filter(t => getTaskStatus(t) === 'doing').length;
+        const done = tasks.filter(t => getTaskStatus(t) === 'done').length;
+        
+        document.getElementById('count-all').innerText = all;
+        document.getElementById('count-todo').innerText = todo;
+        document.getElementById('count-doing').innerText = doing;
+        document.getElementById('count-done').innerText = done;
+    }
+
+    function renderTaskCard(t, originalIndex) {
+        const progress = calculateProgress(t);
+        const isCompleted = progress === 100;
+        const status = getTaskStatus(t);
+        
+        const priorityText = {
+            'high': '高',
+            'medium': '中',
+            'low': '低'
+        }[t.priority || 'medium'];
+        
+        const tagsHtml = t.tags && t.tags.length > 0 
+            ? t.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+            : '';
+        
+        const animationDelay = originalIndex * 0.05;
+        
+        return `
+            <div class="task-node ${isCompleted ? 'completed-task' : ''}" 
+                 id="task-${originalIndex}" 
+                 draggable="true"
+                 data-index="${originalIndex}"
+                 data-priority="${t.priority || 'medium'}"
+                 style="animation-delay: ${animationDelay}s">
+                <div class="task-main" onclick="toggleSubtasks(${originalIndex})">
+                    <div class="drag-handle" onclick="event.stopPropagation();">
+                        <i data-lucide="grip-vertical" size="18"></i>
+                    </div>
+                    <div class="task-content">
+                        <div class="task-top">
+                            <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1; min-width:0;">
+                                <span class="badge badge-status ${status}">
+                                    ${status === 'todo' ? '待办' : status === 'doing' ? '进行中' : '已完成'}
+                                </span>
+                                ${!isCompleted ? `<span class="badge badge-priority ${t.priority || 'medium'}">${priorityText}</span>` : ''}
+                            </div>
+                            <div class="task-actions">
+                                ${!isCompleted ? `
+                                    <button class="task-action-btn complete" onclick="event.stopPropagation(); completeTask(${originalIndex})">
+                                        <i data-lucide="check-circle" size="18"></i>
+                                    </button>
+                                ` : `
+                                    <button class="task-action-btn complete" onclick="event.stopPropagation(); uncompleteTask(${originalIndex})">
+                                        <i data-lucide="rotate-ccw" size="18"></i>
+                                    </button>
+                                `}
+                                <button class="task-action-btn edit" onclick="event.stopPropagation(); openEditModal(${originalIndex})">
+                                    <i data-lucide="edit-2" size="18"></i>
+                                </button>
+                                <button class="task-action-btn delete" onclick="event.stopPropagation(); deleteTask(${originalIndex})">
+                                    <i data-lucide="x" size="18"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <h4 class="task-title">${t.name}</h4>
+                        
+                        ${tagsHtml ? `<div class="task-badges" style="margin-top:8px;">${tagsHtml}</div>` : ''}
+                        
+                        ${t.note ? `<div class="task-notes">${t.note}</div>` : ''}
+
+                        <div class="task-meta">
+                            <span class="task-meta-item">
+                                <i data-lucide="clock" size="12"></i>
+                                ${formatTime(t.updatedAt)}
+                            </span>
+                            <span class="task-meta-item">
+                                <i data-lucide="list-checks" size="12"></i>
+                                ${t.subtasks.length} 个子任务
+                            </span>
+                        </div>
+
+                        <div class="progress-section">
+                            <div class="progress-bar">
+                                <div class="progress-fill ${status}" style="width: ${progress}%"></div>
+                            </div>
+                            <span class="progress-text ${status}">${progress}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="expand-indicator" onclick="event.stopPropagation(); toggleSubtasks(${originalIndex})">
+                    <i data-lucide="${t.isOpen ? 'chevron-up' : 'chevron-down'}" size="16"></i>
+                </div>
+                <div class="subtasks-box ${t.isOpen ? 'open' : ''}" id="sub-box-${originalIndex}">
+                    <div class="subtasks-inner">
+                        ${t.subtasks.map((st, si) => `
+                            <div class="sub-item">
+                                <div class="sub-check ${st.done ? 'done' : ''}" onclick="toggleSubItem(${originalIndex}, ${si})">
+                                    ${st.done ? '<i data-lucide="check" size="14"></i>' : ''}
+                                </div>
+                                <span class="sub-text ${st.done ? 'done' : ''}">${st.text}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function updateStatusFilters() {
+        const buttons = document.querySelectorAll('.filter-chip');
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.status === currentStatusFilter) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    function filterByStatus(status) {
+        currentStatusFilter = status;
+        render();
+        vibrate(10);
+    }
+
+    function calculateProgress(task) {
+        if (!task.subtasks || task.subtasks.length === 0) return 0;
+        const doneCount = task.subtasks.filter(s => s.done).length;
+        return Math.round((doneCount / task.subtasks.length) * 100);
+    }
+
+    function updateOverall() {
+        if (tasks.length === 0) {
+            document.getElementById('overallPercent').innerText = '0%';
+            document.getElementById('ringText').innerText = '0%';
+            document.getElementById('dashFill').style.width = '0%';
+            document.getElementById('ringFill').style.setProperty('--ring-offset', '226');
+            document.getElementById('taskCountLabel').innerText = '0 个活跃任务';
+            return;
+        }
+        
+        const totalProgress = tasks.reduce((sum, t) => sum + calculateProgress(t), 0);
+        const avg = Math.round(totalProgress / tasks.length);
+        
+        document.getElementById('overallPercent').innerText = avg + '%';
+        document.getElementById('ringText').innerText = avg + '%';
+        document.getElementById('dashFill').style.width = avg + '%';
+        
+        const ringFill = document.getElementById('ringFill');
+        const circumference = 2 * Math.PI * 36;
+        const offset = circumference - (avg / 100) * circumference;
+        ringFill.style.setProperty('--ring-offset', offset);
+        ringFill.classList.remove('animated');
+        void ringFill.offsetWidth;
+        ringFill.classList.add('animated');
+        
+        document.getElementById('taskCountLabel').innerText = `${tasks.length} 个活跃任务`;
+        
+        updateMomoState(avg);
+    }
+
+    /* MOMO LOGIC */
+    function updateMomoState(avg) {
+        const momo = document.getElementById('momo-container');
+        momo.className = '';
+
+        if (avg === 0) {
+            momo.classList.add('momo-sleeping');
+            setMomoPop('Zzz...');
+        } else if (avg < 50) {
+            momo.classList.add('momo-drowse');
+            setMomoPop('困困...');
+        } else if (avg < 100) {
+            momo.classList.add('momo-active');
+            setMomoPop('加油呀!');
+        } else {
+            momo.classList.add('momo-active');
+            setMomoPop('太棒了! 喵~');
+        }
+    }
+
+    function triggerMomoReaction(text, animClass) {
+        const momo = document.getElementById('momo-container');
+        const pop = document.getElementById('momo-pop');
+        const oldClass = momo.className;
+        
+        pop.innerText = text;
+        pop.classList.add('show');
+        momo.classList.add(animClass);
+        
+        setTimeout(() => {
+            pop.classList.remove('show');
+            momo.classList.remove(animClass);
+            updateOverall();
+        }, 2000);
+    }
+
+    function setMomoPop(text) {
+        const pop = document.getElementById('momo-pop');
+        pop.innerText = text;
+    }
+
+    function momoInteract() {
+        const messages = [
+            '喵~',
+            '摸摸头~',
+            '继续加油！',
+            '喵呜~',
+            '呼噜噜~'
+        ];
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        triggerMomoReaction(randomMessage, 'momo-active');
+    }
+
+    // Mouse interaction for Active state
+    document.addEventListener('mousemove', (e) => {
+        const momo = document.getElementById('momo-container');
+        if (momo && momo.classList.contains('momo-active')) {
+            const rect = momo.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+            const limitedRotation = Math.max(-20, Math.min(20, angle / 10)); 
+            momo.style.transform = `rotate(${limitedRotation}deg)`;
+        }
+    });
+
+    function openAddModal() { 
+        document.getElementById('addModal').classList.add('open');
+        setTimeout(() => document.getElementById('mTaskName').focus(), 300);
+    }
+    function closeAddModal() { 
+        document.getElementById('addModal').classList.remove('open');
+        document.getElementById('mTaskName').value = '';
+        document.getElementById('mTaskPriority').value = 'medium';
+        document.getElementById('mTaskTags').value = '';
+        document.getElementById('mTaskNote').value = '';
+        document.getElementById('mSubTasks').value = '';
+    }
+
+    function openEditModal(index) {
+        editingIndex = index;
+        const task = tasks[index];
+        document.getElementById('eTaskName').value = task.name;
+        document.getElementById('eTaskPriority').value = task.priority || 'medium';
+        document.getElementById('eTaskTags').value = task.tags ? task.tags.join(', ') : '';
+        document.getElementById('eTaskNote').value = task.note || '';
+        document.getElementById('eSubTasks').value = task.subtasks.map(s => s.text).join(', ');
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeEditModal() {
+        editingIndex = -1;
+        document.getElementById('editModal').classList.remove('open');
+    }
+
+    function handleEdit() {
+        if (editingIndex === -1) return;
+        
+        const name = document.getElementById('eTaskName').value.trim();
+        const priority = document.getElementById('eTaskPriority').value;
+        const tagsRaw = document.getElementById('eTaskTags').value.trim();
+        const note = document.getElementById('eTaskNote').value.trim();
+        const subsRaw = document.getElementById('eSubTasks').value;
+        
+        if (!name) return showToast("请输入任务名称");
+
+        const task = tasks[editingIndex];
+        task.name = name;
+        task.priority = priority;
+        task.tags = tagsRaw ? tagsRaw.split(/[,\n，]/).map(t => t.trim()).filter(t => t !== "") : [];
+        task.note = note;
+        
+        const newSubtasks = subsRaw.split(/[,\n，]/)
+            .map(s => s.trim())
+            .filter(s => s !== "")
+            .map(s => {
+                const existing = task.subtasks.find(st => st.text === s);
+                return existing ? existing : { text: s, done: false };
+            });
+        
+        task.subtasks = newSubtasks;
+        task.updatedAt = Date.now();
+
+        closeEditModal();
+        vibrate(40);
+        render();
+        showToast("任务已更新");
+    }
+
+    function completeTask(index) {
+        tasks[index].subtasks.forEach(st => st.done = true);
+        tasks[index].updatedAt = Date.now();
+        vibrate(50);
+        render();
+        showToast("任务已完成！");
+    }
+
+    function uncompleteTask(index) {
+        tasks[index].subtasks.forEach(st => st.done = false);
+        tasks[index].updatedAt = Date.now();
+        vibrate(20);
+        render();
+        showToast("任务已恢复");
+    }
+
+    function initDragAndDrop() {
+        const taskNodes = document.querySelectorAll('.task-node');
+        
+        taskNodes.forEach(node => {
+            node.addEventListener('dragstart', handleDragStart);
+            node.addEventListener('dragend', handleDragEnd);
+            node.addEventListener('dragover', handleDragOver);
+            node.addEventListener('dragenter', handleDragEnter);
+            node.addEventListener('dragleave', handleDragLeave);
+            node.addEventListener('drop', handleDrop);
+            
+            node.addEventListener('touchstart', handleTouchStart, { passive: false });
+            node.addEventListener('touchmove', handleTouchMove, { passive: false });
+            node.addEventListener('touchend', handleTouchEnd);
+        });
+    }
+
+    function handleDragStart(e) {
+        draggedItem = this;
+        draggedIndex = parseInt(this.dataset.index);
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        vibrate(10);
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.task-node').forEach(node => {
+            node.classList.remove('drag-over');
+        });
+        draggedItem = null;
+        draggedIndex = null;
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        if (this !== draggedItem) {
+            this.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        
+        if (draggedItem !== this) {
+            const targetIndex = parseInt(this.dataset.index);
+            moveTaskTo(draggedIndex, targetIndex);
+        }
+        
+        return false;
+    }
+
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isDragging = false;
+    let touchDraggedItem = null;
+    let lastTapTime = 0;
+    let lastTapIndex = -1;
+
+    function handleTouchStart(e) {
+        const touch = e.touches[0];
+        touchStartY = touch.clientY;
+        touchStartX = touch.clientX;
+        isDragging = false;
+        touchDraggedItem = this;
+        
+        const taskNode = this.closest('.task-node');
+        if (taskNode) {
+            const index = parseInt(taskNode.dataset.index);
+            
+            const now = Date.now();
+            if (lastTapIndex === index && now - lastTapTime < 300) {
+                e.preventDefault();
+                const progress = calculateProgress(tasks[index]);
+                if (progress < 100) {
+                    completeTask(index);
+                } else {
+                    uncompleteTask(index);
+                }
+                lastTapTime = 0;
+                lastTapIndex = -1;
+            } else {
+                lastTapTime = now;
+                lastTapIndex = index;
+            }
+        }
+    }
+
+    function handleTouchMove(e) {
+        if (!touchDraggedItem) return;
+        
+        const touch = e.touches[0];
+        const deltaY = Math.abs(touch.clientY - touchStartY);
+        const deltaX = Math.abs(touch.clientX - touchStartX);
+        
+        if (deltaY > 10 && deltaY > deltaX) {
+            isDragging = true;
+            e.preventDefault();
+            
+            touchDraggedItem.classList.add('dragging');
+            
+            const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+            const targetNode = elements.find(el => el.classList && el.classList.contains('task-node'));
+            
+            document.querySelectorAll('.task-node').forEach(node => {
+                node.classList.remove('drag-over');
+            });
+            
+            if (targetNode && targetNode !== touchDraggedItem) {
+                targetNode.classList.add('drag-over');
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        if (!isDragging) {
+            touchDraggedItem = null;
+            return;
+        }
+        
+        if (isDragging) {
+            const touch = e.changedTouches[0];
+            const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+            const targetNode = elements.find(el => el.classList && el.classList.contains('task-node'));
+            
+            if (targetNode && targetNode !== touchDraggedItem) {
+                const fromIndex = parseInt(touchDraggedItem.dataset.index);
+                const toIndex = parseInt(targetNode.dataset.index);
+                moveTaskTo(fromIndex, toIndex);
+            }
+            
+            touchDraggedItem.classList.remove('dragging');
+            document.querySelectorAll('.task-node').forEach(node => {
+                node.classList.remove('drag-over');
+            });
+        }
+        
+        touchDraggedItem = null;
+        isDragging = false;
+        vibrate(20);
+    }
+
+    function moveTaskTo(fromIndex, toIndex) {
+        if (fromIndex === toIndex) return;
+        
+        const item = tasks.splice(fromIndex, 1)[0];
+        tasks.splice(toIndex, 0, item);
+        
+        vibrate(30);
+        render();
+        showToast("顺序已更新");
+    }
+
+    function handleCreate() {
+        const name = document.getElementById('mTaskName').value.trim();
+        const priority = document.getElementById('mTaskPriority').value;
+        const tagsRaw = document.getElementById('mTaskTags').value.trim();
+        const note = document.getElementById('mTaskNote').value.trim();
+        const subsRaw = document.getElementById('mSubTasks').value;
+        
+        if (!name) return showToast("请输入任务名称");
+
+        const tags = tagsRaw ? tagsRaw.split(/[,\n，]/).map(t => t.trim()).filter(t => t !== "") : [];
+        const subtasks = subsRaw.split(/[,\n，]/)
+            .map(s => s.trim())
+            .filter(s => s !== "")
+            .map(s => ({ text: s, done: false }));
+
+        tasks.unshift({
+            name,
+            priority,
+            tags,
+            note,
+            subtasks,
+            updatedAt: Date.now(),
+            isOpen: false
+        });
+
+        closeAddModal();
+        vibrate(40);
+        triggerMomoReaction('喵~', 'momo-active');
+        render();
+        showToast("任务创建成功");
+    }
+
+    function toggleSubtasks(index) {
+        tasks[index].isOpen = !tasks[index].isOpen;
+        render();
+    }
+
+    function toggleSubItem(tIdx, sIdx) {
+        tasks[tIdx].subtasks[sIdx].done = !tasks[tIdx].subtasks[sIdx].done;
+        tasks[tIdx].updatedAt = Date.now();
+        vibrate(20);
+        
+        const progress = calculateProgress(tasks[tIdx]);
+        if (progress === 100) {
+            triggerMomoReaction('太棒了!', 'momo-active');
+        } else if (tasks[tIdx].subtasks[sIdx].done) {
+            triggerMomoReaction('好样滴!', 'momo-active');
+        } else {
+            triggerMomoReaction('呜呜...', 'momo-scared');
+        }
+        
+        render();
+    }
+
+    function deleteTask(index) {
+        if(confirm("确定删除这个任务吗？")) {
+            tasks.splice(index, 1);
+            vibrate(50);
+            render();
+        }
+    }
+
+    function formatTime(ms) {
+        const date = new Date(ms);
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+
+    function vibrate(p) { if(navigator.vibrate) navigator.vibrate(p); }
+
+    function showToast(txt) {
+        const t = document.getElementById('toast');
+        t.innerText = txt;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function toggleBell() {
+        Notification.requestPermission().then(res => {
+            showToast(res === 'granted' ? "智能提醒已激活" : "请在设置中开启通知");
+            vibrate(100);
+        });
+    }
+
+    function checkReminders() {
+        const now = Date.now();
+        tasks.forEach(t => {
+            const prog = calculateProgress(t);
+            if (prog < 100 && (now - t.updatedAt) > 1800000) {
+                if (Notification.permission === 'granted') {
+                    new Notification("任务进度停滞", {
+                        body: `"${t.name}" 已经 30 分钟没更新了，当前进度 ${prog}%`,
+                        icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%23c4622d' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12,6 12,12 16,14'/%3E%3C/svg%3E"
+                    });
+                }
+            }
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        const addModal = document.getElementById('addModal');
+        const editModal = document.getElementById('editModal');
+        
+        if (e.target === addModal) closeAddModal();
+        if (e.target === editModal) closeEditModal();
+    });
+
+    window.onload = init;
+</script>
+
+</body>
 </html>
